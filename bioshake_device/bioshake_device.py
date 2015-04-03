@@ -2,12 +2,9 @@ from __future__ import print_function, division
 import serial
 import time
 import atexit
-import json
-import functools
-import operator
 import platform
 import os
-import inflection
+from exceptions import Exception
 
 from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports, WriteFrequencyError
 
@@ -29,6 +26,12 @@ else:
 DEBUG = False
 BAUDRATE = 9600
 
+class BioshakeError(Exception):
+    def __init__(self,value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class BioshakeDevice(object):
     '''
     This Python package (bioshake\_device) creates a class named
@@ -39,7 +42,7 @@ class BioshakeDevice(object):
     Example Usage:
 
     dev = BioshakeDevice() # Automatically finds device if one available
-    dev = BioshakeDevice('/dev/ttyACM0') # Linux
+    dev = BioshakeDevice('/dev/ttyUSB0') # Linux
     dev = BioshakeDevice('/dev/tty.usbmodem262471') # Mac OS X
     dev = BioshakeDevice('COM3') # Windows
     dev.get_device_info()
@@ -48,13 +51,22 @@ class BioshakeDevice(object):
     _TIMEOUT = 0.05
     _WRITE_WRITE_DELAY = 0.05
     _RESET_DELAY = 2.0
-    _METHOD_ID_GET_DEVICE_INFO = 0
-    _METHOD_ID_GET_METHOD_IDS = 1
-    _METHOD_ID_GET_RESPONSE_CODES = 2
+    _DEFAULT_TARGET_SPEED = 1000
+    _SHAKE_STATE_DESCRIPTIONS = {
+        0: 'Shaking is active',
+        1: 'Shaker has a stop command detect',
+        2: 'Shaker in the braking mode',
+        3: 'Arrived in the home position',
+        4: 'Manual mode',
+        5: 'Acceleration',
+        6: 'Deceleration',
+        7: 'Deceleration with stopping',
+        90: 'ECO mode',
+        99: 'Boot process running',
+        -1: '',
+    }
 
     def __init__(self,*args,**kwargs):
-        model_number = None
-        serial_number = None
         if 'debug' in kwargs:
             self.debug = kwargs['debug']
         else:
@@ -72,27 +84,16 @@ class BioshakeDevice(object):
             kwargs.update({'timeout': self._TIMEOUT})
         if 'write_write_delay' not in kwargs:
             kwargs.update({'write_write_delay': self._WRITE_WRITE_DELAY})
-        if 'model_number' in kwargs:
-            model_number = kwargs.pop('model_number')
-        if 'serial_number' in kwargs:
-            serial_number = kwargs.pop('serial_number')
         if ('port' not in kwargs) or (kwargs['port'] is None):
             port =  find_bioshake_device_port(baudrate=kwargs['baudrate'],
-                                             model_number=model_number,
-                                             serial_number=serial_number,
-                                             try_ports=try_ports,
-                                             debug=kwargs['debug'])
+                                              try_ports=try_ports,
+                                              debug=kwargs['debug'])
             kwargs.update({'port': port})
 
         t_start = time.time()
         self._serial_device = SerialDevice(*args,**kwargs)
         atexit.register(self._exit_bioshake_device)
         time.sleep(self._RESET_DELAY)
-        self._response_dict = None
-        self._response_dict = self._get_response_dict()
-        self._method_dict = self._get_method_dict()
-        self._method_dict_inv = dict([(v,k) for (k,v) in self._method_dict.iteritems()])
-        self._create_methods()
         t_end = time.time()
         self._debug_print('Initialization time =', (t_end - t_start))
 
@@ -104,9 +105,8 @@ class BioshakeDevice(object):
         pass
 
     def _args_to_request(self,*args):
-        request_list = ['[', ','.join(map(str,args)), ']']
-        request = ''.join(request_list)
-        request = request + '\n';
+        request = ''.join(map(str,args))
+        request = request + '\r';
         return request
 
     def _send_request(self,*args):
@@ -127,92 +127,11 @@ class BioshakeDevice(object):
         request = self._args_to_request(*args)
         self._debug_print('request', request)
         response = self._serial_device.write_read(request,use_readline=True,check_write_freq=True)
-        if response is None:
-            response_dict = {}
-            return response_dict
-        self._debug_print('response', response)
-        try:
-            response_dict = json_string_to_dict(response)
-        except Exception, e:
-            error_message = 'Unable to parse device response {0}.'.format(str(e))
-            raise IOError, error_message
-        try:
-            status = response_dict.pop('status')
-        except KeyError:
-            error_message = 'Device response does not contain status.'
-            raise IOError, error_message
-        try:
-            method_id  = response_dict.pop('method_id')
-        except KeyError:
-            error_message = 'Device response does not contain method_id.'
-            raise IOError, error_message
-        if not method_id == args[0]:
-            raise IOError, 'Device method_id does not match that sent.'
-        if self._response_dict is not None:
-            if status == self._response_dict['response_error']:
-                try:
-                    dev_error_message = '(from device) {0}'.format(response_dict['error_message'])
-                except KeyError:
-                    dev_error_message = "Error message missing."
-                error_message = '{0}'.format(dev_error_message)
-                raise IOError, error_message
-        return response_dict
-
-    def _get_method_dict(self):
-        method_dict = self._send_request_get_response(self._METHOD_ID_GET_METHOD_IDS)
-        return method_dict
-
-    def _get_response_dict(self):
-        response_dict = self._send_request_get_response(self._METHOD_ID_GET_RESPONSE_CODES)
-        check_dict_for_key(response_dict,'response_success',dname='response_dict')
-        check_dict_for_key(response_dict,'response_error',dname='response_dict')
-        return response_dict
-
-    def _send_request_by_method_name(self,name,*args):
-        method_id = self._method_dict[name]
-        method_args = [method_id]
-        method_args.extend(args)
-        response = self._send_request_get_response(*method_args)
+        response = response.strip()
+        if (response == 'e'):
+            request = request.strip()
+            raise BioshakeError(request)
         return response
-
-    def _method_func_base(self,method_name,*args):
-        if len(args) == 1 and type(args[0]) is dict:
-            args_dict = args[0]
-            args_list = self._args_dict_to_list(args_dict)
-        else:
-            args_list = args
-        response_dict = self._send_request_by_method_name(method_name,*args_list)
-        if response_dict:
-            ret_value = self._process_response_dict(response_dict)
-            return ret_value
-
-    def _create_methods(self):
-        self._method_func_dict = {}
-        for method_id, method_name in sorted(self._method_dict_inv.items()):
-            method_func = functools.partial(self._method_func_base, method_name)
-            setattr(self,inflection.underscore(method_name),method_func)
-            self._method_func_dict[method_name] = method_func
-
-    def _process_response_dict(self,response_dict):
-        if len(response_dict) == 1:
-            ret_value = response_dict.values()[0]
-        else:
-            all_values_empty = True
-            for v in response_dict.values():
-                if not type(v) == str or v:
-                    all_values_empty = False
-                    break
-            if all_values_empty:
-                ret_value = sorted(response_dict.keys())
-            else:
-                ret_value = response_dict
-        return ret_value
-
-    def _args_dict_to_list(self,args_dict):
-        key_set = set(args_dict.keys())
-        order_list = sorted([(num,name) for (name,num) in order_dict.iteritems()])
-        args_list = [args_dict[name] for (num, name) in order_list]
-        return args_list
 
     def close(self):
         '''
@@ -223,14 +142,118 @@ class BioshakeDevice(object):
     def get_port(self):
         return self._serial_device.port
 
-    def get_device_info(self):
-        return self._send_request_get_response(self._METHOD_ID_GET_DEVICE_INFO)
+    def get_version(self):
+        '''
+        Send back the current version number.
+        '''
+        return self._send_request_get_response('getVersion')
 
-    def get_methods(self):
+    def get_description(self):
         '''
-        Get a list of bioshake methods automatically attached as class methods.
+        Send back the current model information.
         '''
-        return [inflection.underscore(key) for key in self._method_dict.keys()]
+        return self._send_request_get_response('getDescription')
+
+    def reset_device(self):
+        '''
+        Restart the controller.
+        '''
+        return self._send_request_get_response('resetDevice')
+
+    def get_error_list(self):
+        '''
+        Return a semicolon separated list with warnings and errors that
+        occurred.
+        '''
+        return self._send_request_get_response('getErrorList')
+
+    def set_eco_mode(self):
+        '''
+        Switch the shaker into economical mode. It will reduce electricity
+        consumption by switching off the solenoid for the home
+        position and the deactivation of the ELM function. Warning:
+        No home position!!! ELM is in locked position!!!
+        '''
+        return self._send_request_get_response('setEcoMode')
+
+    def leave_eco_mode(self):
+        '''
+        Leave the economical mode and change in the normal operating state
+        with finding the home position.
+        '''
+        return self._send_request_get_response('leaveEcoMode')
+
+    def shake_on(self):
+        '''
+        Start the shaking with the current mixing speed or with the default
+        mixing speed if an error occurs.
+        '''
+        try:
+            return self._send_request_get_response('shakeOn')
+        except BioshakeError:
+            self.set_shake_target_speed()
+        return self._send_request_get_response('shakeOn')
+
+    def shake_on_with_runtime(self,runtime):
+        '''
+        Start the shaking with the current mixing speed for a defined time
+        in seconds or with the default mixing speed if an error
+        occurs. Allowable range: 0 – 99999 seconds
+        '''
+        try:
+            return self._send_request_get_response('shakeOnWithRuntime'+str(runtime))
+        except BioshakeError:
+            self.set_shake_target_speed()
+        return self._send_request_get_response('shakeOnWithRuntime'+str(runtime))
+
+    def get_shake_remaining_time(self):
+        '''
+        Return the remaining time in seconds.
+        '''
+        return self._send_request_get_response('getShakeRemainingTime')
+
+    def shake_off(self):
+        '''
+        Stop the shaking and return to the home position.
+        '''
+        return self._send_request_get_response('shakeOff')
+
+    def shake_emergency_off(self):
+        '''
+        High-Speed stop for the shaking. Warning: No defined home
+        position !!!
+        '''
+        return self._send_request_get_response('shakeEmergencyOff')
+
+    def shake_go_home(self):
+        '''
+        Shaker goes to the home position and lock in.
+        '''
+        return self._send_request_get_response('shakeGoHome')
+
+    def get_shake_state(self):
+        '''
+        Return the state of shaking.
+        '''
+        shake_state_value = self._send_request_get_response('getShakeState')
+        if len(shake_state_value) > 0:
+            shake_state_value = int(shake_state_value)
+        else:
+            shake_state_value = -1
+        return {'value': shake_state_value,
+                'description': self._SHAKE_STATE_DESCRIPTIONS[shake_state_value]}
+
+    def get_shake_target_speed(self):
+        '''
+        Return the target mixing speed.
+        '''
+        return self._send_request_get_response('getShakeTargetSpeed')
+
+    def set_shake_target_speed(self,target_speed=_DEFAULT_TARGET_SPEED):
+        '''
+        Set the target mixing speed. Allowable range: 0 – 3000 rpm
+        '''
+        return self._send_request_get_response('setShakeTargetSpeed'+str(target_speed))
 
 
 class BioshakeDevices(dict):
@@ -250,111 +273,66 @@ class BioshakeDevices(dict):
     dev = devs[name][serial_number]
     '''
     def __init__(self,*args,**kwargs):
-        if ('use_ports' not in kwargs) or (kwargs['use_ports'] is None):
-            bioshake_device_ports = find_bioshake_device_ports(*args,**kwargs)
-        else:
-            bioshake_device_ports = use_ports
+        pass
+        # if ('use_ports' not in kwargs) or (kwargs['use_ports'] is None):
+        #     bioshake_device_ports = find_bioshake_device_ports(*args,**kwargs)
+        # else:
+        #     bioshake_device_ports = use_ports
 
-        for port in bioshake_device_ports:
-            kwargs.update({'port': port})
-            self._add_device(*args,**kwargs)
+        # for port in bioshake_device_ports:
+        #     kwargs.update({'port': port})
+        #     self._add_device(*args,**kwargs)
 
     def _add_device(self,*args,**kwargs):
-        dev = BioshakeDevice(*args,**kwargs)
-        device_info = dev.get_device_info()
-        name = device_info['name']
-        serial_number = device_info['serial_number']
-        if name not in self:
-            self[name] = {}
-        self[name][serial_number] = dev
+        pass
+        # dev = BioshakeDevice(*args,**kwargs)
+        # device_info = dev.get_device_info()
+        # name = device_info['name']
+        # serial_number = device_info['serial_number']
+        # if name not in self:
+        #     self[name] = {}
+        # self[name][serial_number] = dev
 
 
-def check_dict_for_key(d,k,dname=''):
-    if not k in d:
-        if not dname:
-            dname = 'dictionary'
-        raise IOError, '{0} does not contain {1}'.format(dname,k)
+def find_bioshake_device_ports(baudrate=None, try_ports=None, debug=DEBUG):
+    pass
+    # serial_device_ports = find_serial_device_ports(try_ports=try_ports, debug=debug)
+    # os_type = platform.system()
+    # if os_type == 'Darwin':
+    #     serial_device_ports = [x for x in serial_device_ports if 'tty.usbmodem' in x or 'tty.usbserial' in x]
 
-def json_string_to_dict(json_string):
-    json_dict =  json.loads(json_string,object_hook=json_decode_dict)
-    return json_dict
-
-def json_decode_dict(data):
-    """
-    Object hook for decoding dictionaries from serialized json data. Ensures that
-    all strings are unpacked as str objects rather than unicode.
-    """
-    rv = {}
-    for key, value in data.iteritems():
-        if isinstance(key, unicode):
-            key = key.encode('utf-8')
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
-        elif isinstance(value, list):
-            value = json_decode_list(value)
-        elif isinstance(value, dict):
-            value = json_decode_dict(value)
-        rv[key] = value
-    return rv
-
-def json_decode_list(data):
-    """
-    Object hook for decoding lists from serialized json data. Ensures that
-    all strings are unpacked as str objects rather than unicode.
-    """
-    rv = []
-    for item in data:
-        if isinstance(item, unicode):
-            item = item.encode('utf-8')
-        elif isinstance(item, list):
-            item = json_decode_list(item)
-        elif isinstance(item, dict):
-            item = json_decode_dict(item)
-        rv.append(item)
-    return rv
-
-def find_bioshake_device_ports(baudrate=None, model_number=None, serial_number=None, try_ports=None, debug=DEBUG):
-    serial_device_ports = find_serial_device_ports(try_ports=try_ports, debug=debug)
-    os_type = platform.system()
-    if os_type == 'Darwin':
-        serial_device_ports = [x for x in serial_device_ports if 'tty.usbmodem' in x or 'tty.usbserial' in x]
-
-    if type(model_number) is int:
-        model_number = [model_number]
-    if type(serial_number) is int:
-        serial_number = [serial_number]
-
-    bioshake_device_ports = {}
-    for port in serial_device_ports:
-        try:
-            dev = BioshakeDevice(port=port,baudrate=baudrate,debug=debug)
-            device_info = dev.get_device_info()
-            if ((model_number is None ) and (device_info['model_number'] is not None)) or (device_info['model_number'] in model_number):
-                if ((serial_number is None) and (device_info['serial_number'] is not None)) or (device_info['serial_number'] in serial_number):
-                    bioshake_device_ports[port] = {'model_number': device_info['model_number'],
-                                                  'serial_number': device_info['serial_number']}
-            dev.close()
-        except (serial.SerialException, IOError):
-            pass
-    return bioshake_device_ports
+    # bioshake_device_ports = {}
+    # for port in serial_device_ports:
+    #     try:
+    #         dev = BioshakeDevice(port=port,baudrate=baudrate,debug=debug)
+    #         device_info = dev.get_device_info()
+    #         if ((model_number is None ) and (device_info['model_number'] is not None)) or (device_info['model_number'] in model_number):
+    #             if ((serial_number is None) and (device_info['serial_number'] is not None)) or (device_info['serial_number'] in serial_number):
+    #                 bioshake_device_ports[port] = {'model_number': device_info['model_number'],
+    #                                               'serial_number': device_info['serial_number']}
+    #         dev.close()
+    #     except (serial.SerialException, IOError):
+    #         pass
+    # return bioshake_device_ports
 
 def find_bioshake_device_port(baudrate=None, model_number=None, serial_number=None, try_ports=None, debug=DEBUG):
-    bioshake_device_ports = find_bioshake_device_ports(baudrate=baudrate,
-                                                     model_number=model_number,
-                                                     serial_number=serial_number,
-                                                     try_ports=try_ports,
-                                                     debug=debug)
-    if len(bioshake_device_ports) == 1:
-        return bioshake_device_ports.keys()[0]
-    elif len(bioshake_device_ports) == 0:
-        serial_device_ports = find_serial_device_ports(try_ports)
-        err_string = 'Could not find any Bioshake devices. Check connections and permissions.\n'
-        err_string += 'Tried ports: ' + str(serial_device_ports)
-        raise RuntimeError(err_string)
-    else:
-        err_string = 'Found more than one Bioshake device. Specify port or model_number and/or serial_number.\n'
-        err_string += 'Matching ports: ' + str(bioshake_device_ports)
-        raise RuntimeError(err_string)
+    pass
+    # bioshake_device_ports = find_bioshake_device_ports(baudrate=baudrate,
+    #                                                    model_number=model_number,
+    #                                                    serial_number=serial_number,
+    #                                                    try_ports=try_ports,
+    #                                                    debug=debug)
+    # if len(bioshake_device_ports) == 1:
+    #     return bioshake_device_ports.keys()[0]
+    # elif len(bioshake_device_ports) == 0:
+    #     serial_device_ports = find_serial_device_ports(try_ports)
+    #     err_string = 'Could not find any Bioshake devices. Check connections and permissions.\n'
+    #     err_string += 'Tried ports: ' + str(serial_device_ports)
+    #     raise RuntimeError(err_string)
+    # else:
+    #     err_string = 'Found more than one Bioshake device. Specify port or model_number and/or serial_number.\n'
+    #     err_string += 'Matching ports: ' + str(bioshake_device_ports)
+    #     raise RuntimeError(err_string)
 
 
 # -----------------------------------------------------------------------------------------
