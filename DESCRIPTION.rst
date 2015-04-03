@@ -1,0 +1,30 @@
+bioshake_device_python
+======================
+
+This Python package (bioshake\_device) creates a class named
+BioshakeDevice, which contains an instance of
+serial\_device2.SerialDevice and adds methods to it to interface to
+Q.instruments BioShake devices.
+
+Authors::
+
+    Peter Polidoro <polidorop@janelia.hhmi.org>
+
+License::
+
+    BSD
+
+Example Usage::
+
+    from bioshake_device import BioshakeDevice
+    dev = BioshakeDevice()
+    dev = BioshakeDevice() # Automatically finds device if one available
+    dev = BioshakeDevice('/dev/ttyACM0') # Linux specific port
+    dev = BioshakeDevice('/dev/tty.usbmodem262471') # Mac OS X specific port
+    dev = BioshakeDevice('COM3') # Windows specific port
+    dev.get_device_info()
+    dev.get_methods()
+    devs = BioshakeDevices()  # Automatically finds all available devices
+    devs.items()
+    dev = devs[name][serial_number]
+
