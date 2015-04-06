@@ -20,32 +20,21 @@ License:
 ```python
 from bioshake_device import BioshakeDevice
 dev = BioshakeDevice() # Automatically finds device if one available
-dev = BioshakeDevice('/dev/ttyACM0') # Linux specific port
+dev = BioshakeDevice('/dev/ttyUSB0') # Linux specific port
 dev = BioshakeDevice('/dev/tty.usbmodem262471') # Mac OS X specific port
 dev = BioshakeDevice('COM3') # Windows specific port
-dev.get_device_info()
-dev.get_methods()
+dev.get_description()
+dev.set_shake_target_speed(1000)
+dev.shake_on()
+dev.shake_off()
+dev.set_temp_target(45)
+dev.temp_on()
+dev.temp_off()
 devs = BioshakeDevices()  # Automatically finds all available devices
-devs.items()
-dev = devs[name][serial_number]
+dev = devs[0]
 ```
-
-More Detailed Examples:
-
-<https://github.com/JaneliaSciComp/bioshake_device_arduino>
 
 ##Installation
-
-###Install Latest Version of Arduino on your Host Machine
-
-<http://arduino.cc/en/Guide/HomePage>
-
-On linux, you may need to add yourself to the group 'dialout' in order
-to have write permissions on the USB port:
-
-```shell
-sudo usermod -aG dialout $USER
-```
 
 ###Linux and Mac OS X
 
