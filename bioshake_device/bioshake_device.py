@@ -65,6 +65,12 @@ class BioshakeDevice(object):
         99: 'Boot process running',
         -1: '',
     }
+    _ELM_STATE_DESCRIPTIONS = {
+        1: 'Microplate is locked',
+        3: 'Microplate is unlocked',
+        9: 'Error',
+        -1: '',
+    }
 
     def __init__(self,*args,**kwargs):
         if 'debug' in kwargs:
@@ -259,7 +265,16 @@ class BioshakeDevice(object):
         '''
         Set the target mixing speed. Allowable range: 0 – 3000 rpm
         '''
-        return self._send_request_get_response('setShakeTargetSpeed'+str(target_speed))
+        if (target_speed >= 0) and (target_speed <= 3000):
+            return self._send_request_get_response('setShakeTargetSpeed'+str(target_speed))
+        else:
+            print(self.set_shake_target_speed.__doc__)
+
+    def get_default_shake_target_speed(self):
+        '''
+        Get the default mixing speed. (rpm)
+        '''
+        return _DEFAULT_TARGET_SPEED
 
     def get_shake_actual_speed(self):
         '''
@@ -290,7 +305,81 @@ class BioshakeDevice(object):
         Set the acceleration/deceleration value in seconds. Allowable
         range: 0 - 10 seconds
         '''
-        return self._send_request_get_response('setShakeAcceleration'+str(acceleration))
+        if (acceleration >= 0) and (acceleration <= 10):
+            return self._send_request_get_response('setShakeAcceleration'+str(acceleration))
+        else:
+            print(self.set_shake_acceleration.__doc__)
+
+    def temp_on(self):
+        '''
+        Activate the temperature control.
+        '''
+        return self._send_request_get_response('tempOn')
+
+    def temp_off(self):
+        '''
+        Deactivate the temperature control.
+        '''
+        return self._send_request_get_response('tempOff')
+
+    def get_temp_target(self):
+        '''
+        Return the target temperature. (°C)
+        '''
+        return self._send_request_get_response('getTempTarget')
+
+    def set_temp_target(self,temp_target):
+        '''
+        Set the target temperature in °C allowed range: 0 – 99.0 in °C
+        '''
+        if (temp_target >= 0) and (temp_target <= 99):
+            return self._send_request_get_response('setTempTarget'+str(int(round(temp_target*10))))
+        else:
+            print(self.set_temp_target.__doc__)
+
+    def get_temp_actual(self):
+        '''
+        Return the actual temperature. (°C)
+        '''
+        return self._send_request_get_response('getTempActual')
+
+    def get_temp_min(self):
+        '''
+        Return the least set point of temperature. (°C)
+        '''
+        return self._send_request_get_response('getTempMin')
+
+    def get_temp_max(self):
+        '''
+        Return the biggest set point of temperature. (°C)
+        '''
+        return self._send_request_get_response('getTempMax')
+
+    def set_elm_lock_pos(self):
+        '''
+        Close the Edge Locking Mechanism (ELM).
+        The microplate is locked.
+        '''
+        return self._send_request_get_response('setElmLockPos')
+
+    def set_elm_unlock_pos(self):
+        '''
+        Opens the Edge Locking Mechanism (ELM) for gripping of microplates.
+        The microplate is not locked.
+        '''
+        return self._send_request_get_response('setElmUnlockPos')
+
+    def get_elm_state(self):
+        '''
+        Return the state of Edge Locking Mechanism (ELM).
+        '''
+        elm_state_value = self._send_request_get_response('getElmState')
+        if len(elm_state_value) > 0:
+            elm_state_value = int(elm_state_value)
+        else:
+            elm_state_value = -1
+        return {'value': elm_state_value,
+                'description': self._ELM_STATE_DESCRIPTIONS[elm_state_value]}
 
 
 class BioshakeDevices(list):
