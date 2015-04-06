@@ -142,6 +142,12 @@ class BioshakeDevice(object):
     def get_port(self):
         return self._serial_device.port
 
+    def info(self):
+        '''
+        Listing of general information.
+        '''
+        return self._send_request_get_response('info')
+
     def get_version(self):
         '''
         Send back the current version number.
@@ -245,7 +251,7 @@ class BioshakeDevice(object):
 
     def get_shake_target_speed(self):
         '''
-        Return the target mixing speed.
+        Return the target mixing speed. (rpm)
         '''
         return self._send_request_get_response('getShakeTargetSpeed')
 
@@ -255,84 +261,92 @@ class BioshakeDevice(object):
         '''
         return self._send_request_get_response('setShakeTargetSpeed'+str(target_speed))
 
+    def get_shake_actual_speed(self):
+        '''
+        Return the current mixing speed. (rpm)
+        '''
+        return self._send_request_get_response('getShakeActualSpeed')
 
-class BioshakeDevices(dict):
+    def get_shake_min_rpm(self):
+        '''
+        Return the least set point.
+        '''
+        return self._send_request_get_response('getShakeMinRpm')
+
+    def get_shake_max_rpm(self):
+        '''
+        Return the biggest set point.
+        '''
+        return self._send_request_get_response('getShakeMaxRpm')
+
+    def get_shake_acceleration(self):
+        '''
+        Return the acceleration/deceleration value. (seconds)
+        '''
+        return self._send_request_get_response('getShakeAcceleration')
+
+    def set_shake_acceleration(self,acceleration):
+        '''
+        Set the acceleration/deceleration value in seconds. Allowable
+        range: 0 - 10 seconds
+        '''
+        return self._send_request_get_response('setShakeAcceleration'+str(acceleration))
+
+
+class BioshakeDevices(list):
     '''
-    BioshakeDevices inherits from dict and automatically populates it with
-    BioshakeDevices on all available serial ports. Access each individual
-    device with two keys, the device name and the serial_number. If you
-    want to connect multiple BioshakeDevices with the same name at the
-    same time, first make sure they have unique serial_numbers by
-    connecting each device one by one and using the set_serial_number
-    method on each device.
+    BioshakeDevices inherits from list and automatically populates it with
+    BioshakeDevices on all available serial ports.
 
     Example Usage:
 
     devs = BioshakeDevices()  # Automatically finds all available devices
-    devs.items()
-    dev = devs[name][serial_number]
+    devs
     '''
     def __init__(self,*args,**kwargs):
-        pass
-        # if ('use_ports' not in kwargs) or (kwargs['use_ports'] is None):
-        #     bioshake_device_ports = find_bioshake_device_ports(*args,**kwargs)
-        # else:
-        #     bioshake_device_ports = use_ports
+        if ('use_ports' not in kwargs) or (kwargs['use_ports'] is None):
+            bioshake_device_ports = find_bioshake_device_ports(*args,**kwargs)
+        else:
+            bioshake_device_ports = use_ports
 
-        # for port in bioshake_device_ports:
-        #     kwargs.update({'port': port})
-        #     self._add_device(*args,**kwargs)
-
-    def _add_device(self,*args,**kwargs):
-        pass
-        # dev = BioshakeDevice(*args,**kwargs)
-        # device_info = dev.get_device_info()
-        # name = device_info['name']
-        # serial_number = device_info['serial_number']
-        # if name not in self:
-        #     self[name] = {}
-        # self[name][serial_number] = dev
+        for port in bioshake_device_ports:
+            dev = BioshakeDevice(*args,**kwargs)
+            self.append(dev)
 
 
 def find_bioshake_device_ports(baudrate=None, try_ports=None, debug=DEBUG):
-    pass
-    # serial_device_ports = find_serial_device_ports(try_ports=try_ports, debug=debug)
-    # os_type = platform.system()
-    # if os_type == 'Darwin':
-    #     serial_device_ports = [x for x in serial_device_ports if 'tty.usbmodem' in x or 'tty.usbserial' in x]
+    serial_device_ports = find_serial_device_ports(try_ports=try_ports, debug=debug)
+    os_type = platform.system()
+    if os_type == 'Darwin':
+        serial_device_ports = [x for x in serial_device_ports if 'tty.usbmodem' in x or 'tty.usbserial' in x]
 
-    # bioshake_device_ports = {}
-    # for port in serial_device_ports:
-    #     try:
-    #         dev = BioshakeDevice(port=port,baudrate=baudrate,debug=debug)
-    #         device_info = dev.get_device_info()
-    #         if ((model_number is None ) and (device_info['model_number'] is not None)) or (device_info['model_number'] in model_number):
-    #             if ((serial_number is None) and (device_info['serial_number'] is not None)) or (device_info['serial_number'] in serial_number):
-    #                 bioshake_device_ports[port] = {'model_number': device_info['model_number'],
-    #                                               'serial_number': device_info['serial_number']}
-    #         dev.close()
-    #     except (serial.SerialException, IOError):
-    #         pass
-    # return bioshake_device_ports
+    bioshake_device_ports = []
+    for port in serial_device_ports:
+        try:
+            dev = BioshakeDevice(port=port,baudrate=baudrate,debug=debug)
+            description = dev.get_description()
+            if 'BIOSHAKE' in description:
+                bioshake_device_ports.append(port)
+            dev.close()
+        except (serial.SerialException, IOError):
+            pass
+    return bioshake_device_ports
 
 def find_bioshake_device_port(baudrate=None, model_number=None, serial_number=None, try_ports=None, debug=DEBUG):
-    pass
-    # bioshake_device_ports = find_bioshake_device_ports(baudrate=baudrate,
-    #                                                    model_number=model_number,
-    #                                                    serial_number=serial_number,
-    #                                                    try_ports=try_ports,
-    #                                                    debug=debug)
-    # if len(bioshake_device_ports) == 1:
-    #     return bioshake_device_ports.keys()[0]
-    # elif len(bioshake_device_ports) == 0:
-    #     serial_device_ports = find_serial_device_ports(try_ports)
-    #     err_string = 'Could not find any Bioshake devices. Check connections and permissions.\n'
-    #     err_string += 'Tried ports: ' + str(serial_device_ports)
-    #     raise RuntimeError(err_string)
-    # else:
-    #     err_string = 'Found more than one Bioshake device. Specify port or model_number and/or serial_number.\n'
-    #     err_string += 'Matching ports: ' + str(bioshake_device_ports)
-    #     raise RuntimeError(err_string)
+    bioshake_device_ports = find_bioshake_device_ports(baudrate=baudrate,
+                                                       try_ports=try_ports,
+                                                       debug=debug)
+    if len(bioshake_device_ports) == 1:
+        return bioshake_device_ports[0]
+    elif len(bioshake_device_ports) == 0:
+        serial_device_ports = find_serial_device_ports(try_ports)
+        err_string = 'Could not find any Bioshake devices. Check connections and permissions.\n'
+        err_string += 'Tried ports: ' + str(serial_device_ports)
+        raise RuntimeError(err_string)
+    else:
+        err_string = 'Found more than one Bioshake device. Specify port or model_number and/or serial_number.\n'
+        err_string += 'Matching ports: ' + str(bioshake_device_ports)
+        raise RuntimeError(err_string)
 
 
 # -----------------------------------------------------------------------------------------
