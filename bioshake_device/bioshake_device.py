@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import print_function, division
 import serial
 import time
@@ -46,17 +47,17 @@ class BioshakeDevice(object):
     dev = BioshakeDevice('/dev/tty.usbmodem262471') # Mac OS X
     dev = BioshakeDevice('COM3') # Windows
     dev.get_description()
-    dev.set_shake_target_speed(1000)
-    dev.shake_on()
+    dev.shake_on(speed_target=1000) # speed_target (rpm)
+    dev.get_shake_actual_speed()
     dev.shake_off()
-    dev.set_temp_target(45)
-    dev.temp_on()
+    dev.temp_on(temp_target=45) # temp_target (°C)
+    dev.get_temp_actual()
     dev.temp_off()
     '''
     _TIMEOUT = 0.05
     _WRITE_WRITE_DELAY = 0.05
     _RESET_DELAY = 2.0
-    _DEFAULT_TARGET_SPEED = 1000
+    _DEFAULT_SPEED_TARGET = 1000
     _SHAKE_STATE_DESCRIPTIONS = {
         0: 'Shaking is active',
         1: 'Shaker has a stop command detect',
@@ -200,28 +201,24 @@ class BioshakeDevice(object):
         '''
         return self._send_request_get_response('leaveEcoMode')
 
-    def shake_on(self):
+    def shake_on(self,speed_target=_DEFAULT_SPEED_TARGET):
         '''
-        Start the shaking with the current mixing speed or with the default
-        mixing speed if an error occurs.
+        Start the shaking at the target speed (rpm) or with the default
+        speed if no speed_target provided.
         '''
-        try:
+        response = self._set_shake_speed_target(speed_target)
+        if response is not None:
             return self._send_request_get_response('shakeOn')
-        except BioshakeError:
-            self.set_shake_target_speed()
-        return self._send_request_get_response('shakeOn')
 
-    def shake_on_with_runtime(self,runtime):
+    def shake_on_with_runtime(self,runtime,speed_target=_DEFAULT_SPEED_TARGET):
         '''
-        Start the shaking with the current mixing speed for a defined time
-        in seconds or with the default mixing speed if an error
-        occurs. Allowable range: 0 – 99999 seconds
+        Shake for runtime duration (s) at the speed_target (rpm) or with
+        the default speed_target if none provided. Allowable runtime
+        range: 0 – 99999 seconds.
         '''
-        try:
-            return self._send_request_get_response('shakeOnWithRuntime'+str(runtime))
-        except BioshakeError:
-            self.set_shake_target_speed()
-        return self._send_request_get_response('shakeOnWithRuntime'+str(runtime))
+        response = self._set_shake_speed_target(speed_target)
+        if response is not None:
+            return self._send_request_get_response('shakeOnWithRuntime'+str(int(runtime)))
 
     def get_shake_remaining_time(self):
         '''
@@ -260,28 +257,28 @@ class BioshakeDevice(object):
         return {'value': shake_state_value,
                 'description': self._SHAKE_STATE_DESCRIPTIONS[shake_state_value]}
 
-    def get_shake_target_speed(self):
+    def get_shake_speed_target(self):
         '''
         Return the target mixing speed. (rpm)
         '''
         return self._send_request_get_response('getShakeTargetSpeed')
 
-    def set_shake_target_speed(self,target_speed=_DEFAULT_TARGET_SPEED):
+    def _set_shake_speed_target(self,speed_target=_DEFAULT_SPEED_TARGET):
         '''
-        Set the target mixing speed. Allowable range: 0 – 3000 rpm
+        Set the target mixing speed. Allowable range: 200 – 3000 rpm
         '''
-        if (target_speed >= 0) and (target_speed <= 3000):
-            return self._send_request_get_response('setShakeTargetSpeed'+str(target_speed))
+        if (speed_target >= 200) and (speed_target <= 3000):
+            return self._send_request_get_response('setShakeTargetSpeed'+str(int(speed_target)))
         else:
-            print(self.set_shake_target_speed.__doc__)
+            print(self._set_shake_speed_target.__doc__)
 
-    def get_default_shake_target_speed(self):
+    def get_default_shake_speed_target(self):
         '''
         Get the default mixing speed. (rpm)
         '''
-        return _DEFAULT_TARGET_SPEED
+        return self._DEFAULT_SPEED_TARGET
 
-    def get_shake_actual_speed(self):
+    def get_shake_speed_actual(self):
         '''
         Return the current mixing speed. (rpm)
         '''
@@ -315,11 +312,13 @@ class BioshakeDevice(object):
         else:
             print(self.set_shake_acceleration.__doc__)
 
-    def temp_on(self):
+    def temp_on(self,temp_target):
         '''
-        Activate the temperature control.
+        Activate the temperature control. temp_target allowed range: 0 – 99.0 (°C)
         '''
-        return self._send_request_get_response('tempOn')
+        response = self._set_temp_target(temp_target)
+        if response is not None:
+            return self._send_request_get_response('tempOn')
 
     def temp_off(self):
         '''
@@ -333,7 +332,7 @@ class BioshakeDevice(object):
         '''
         return self._send_request_get_response('getTempTarget')
 
-    def set_temp_target(self,temp_target):
+    def _set_temp_target(self,temp_target):
         '''
         Set the target temperature in °C allowed range: 0 – 99.0 in °C
         '''

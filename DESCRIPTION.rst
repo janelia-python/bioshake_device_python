@@ -17,17 +17,16 @@ License::
 Example Usage::
 
     from bioshake_device import BioshakeDevice
-    dev = BioshakeDevice()
     dev = BioshakeDevice() # Automatically finds device if one available
-    dev = BioshakeDevice('/dev/ttyACM0') # Linux specific port
-    dev = BioshakeDevice('/dev/tty.usbmodem262471') # Mac OS X specific port
-    dev = BioshakeDevice('COM3') # Windows specific port
+    dev = BioshakeDevice('/dev/ttyUSB0') # Linux
+    dev = BioshakeDevice('/dev/tty.usbmodem262471') # Mac OS X
+    dev = BioshakeDevice('COM3') # Windows
     dev.get_description()
-    dev.set_shake_target_speed(1000)
-    dev.shake_on()
+    dev.shake_on(speed_target=1000) # speed_target (rpm)
+    dev.get_shake_actual_speed()
     dev.shake_off()
-    dev.set_temp_target(45)
-    dev.temp_on()
+    dev.temp_on(temp_target=45) # temp_target (°C)
+    dev.get_temp_actual()
     dev.temp_off()
     devs = BioshakeDevices()  # Automatically finds all available devices
     dev = devs[0]
