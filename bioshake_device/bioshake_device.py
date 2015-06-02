@@ -224,7 +224,7 @@ class BioshakeDevice(object):
         '''
         Return the remaining time in seconds.
         '''
-        return self._send_request_get_response('getShakeRemainingTime')
+        return int(float(self._send_request_get_response('getShakeRemainingTime')))
 
     def shake_off(self):
         '''
@@ -261,7 +261,7 @@ class BioshakeDevice(object):
         '''
         Return the target mixing speed. (rpm)
         '''
-        return self._send_request_get_response('getShakeTargetSpeed')
+        return int(float(self._send_request_get_response('getShakeTargetSpeed')))
 
     def _set_shake_speed_target(self,speed_target=_DEFAULT_SPEED_TARGET):
         '''
@@ -282,25 +282,25 @@ class BioshakeDevice(object):
         '''
         Return the current mixing speed. (rpm)
         '''
-        return self._send_request_get_response('getShakeActualSpeed')
+        return int(float(self._send_request_get_response('getShakeActualSpeed')))
 
-    def get_shake_min_rpm(self):
+    def get_shake_speed_min(self):
         '''
-        Return the least set point.
+        Return the least shake_speed set point.
         '''
-        return self._send_request_get_response('getShakeMinRpm')
+        return int(float(self._send_request_get_response('getShakeMinRpm')))
 
-    def get_shake_max_rpm(self):
+    def get_shake_speed_max(self):
         '''
-        Return the biggest set point.
+        Return the biggest shake_speed set point.
         '''
-        return self._send_request_get_response('getShakeMaxRpm')
+        return int(float(self._send_request_get_response('getShakeMaxRpm')))
 
     def get_shake_acceleration(self):
         '''
         Return the acceleration/deceleration value. (seconds)
         '''
-        return self._send_request_get_response('getShakeAcceleration')
+        return int(float(self._send_request_get_response('getShakeAcceleration')))
 
     def set_shake_acceleration(self,acceleration):
         '''
@@ -330,7 +330,7 @@ class BioshakeDevice(object):
         '''
         Return the target temperature. (°C)
         '''
-        return self._send_request_get_response('getTempTarget')
+        return float(self._send_request_get_response('getTempTarget'))
 
     def _set_temp_target(self,temp_target):
         '''
@@ -345,19 +345,19 @@ class BioshakeDevice(object):
         '''
         Return the actual temperature. (°C)
         '''
-        return self._send_request_get_response('getTempActual')
+        return float(self._send_request_get_response('getTempActual'))
 
     def get_temp_min(self):
         '''
         Return the least set point of temperature. (°C)
         '''
-        return self._send_request_get_response('getTempMin')
+        return float(self._send_request_get_response('getTempMin'))
 
     def get_temp_max(self):
         '''
         Return the biggest set point of temperature. (°C)
         '''
-        return self._send_request_get_response('getTempMax')
+        return float(self._send_request_get_response('getTempMax'))
 
     def set_elm_lock_pos(self):
         '''
