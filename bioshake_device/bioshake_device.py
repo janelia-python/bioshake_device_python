@@ -208,7 +208,6 @@ class BioshakeDevice(object):
         '''
         response = self._set_shake_speed_target(speed_target)
         if response is not None:
-            time.sleep(1)
             return self._send_request_get_response('shakeOn')
 
     def shake_on_with_runtime(self,runtime,speed_target=_DEFAULT_SPEED_TARGET):
@@ -219,7 +218,6 @@ class BioshakeDevice(object):
         '''
         response = self._set_shake_speed_target(speed_target)
         if response is not None:
-            time.sleep(1)
             return self._send_request_get_response('shakeOnWithRuntime'+str(int(runtime)))
 
     def get_shake_remaining_time(self):
