@@ -35,9 +35,9 @@ class BioshakeError(Exception):
 
 class BioshakeDevice(object):
     '''
-    This Python package (bioshake\_device) creates a class named
+    This Python package (bioshake_device) creates a class named
     BioshakeDevice, which contains an instance of
-    serial\_device2.SerialDevice and adds methods to it to interface to
+    serial_device2.SerialDevice and adds methods to it to interface to
     Q.instruments BioShake devices.
 
     Example Usage:
