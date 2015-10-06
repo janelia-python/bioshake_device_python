@@ -30,8 +30,6 @@ dev.shake_off()
 dev.temp_on(temp_target=45) # temp_target (°C)
 dev.get_temp_actual()
 dev.temp_off()
-devs = BioshakeDevices()  # Automatically finds all available devices
-dev = devs[0]
 ```
 
 ```python
