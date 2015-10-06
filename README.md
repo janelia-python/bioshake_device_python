@@ -1,5 +1,4 @@
-bioshake_device_python
-======================
+#bioshake_device_python
 
 This Python package (bioshake\_device) creates a class named
 BioshakeDevice, which contains an instance of
