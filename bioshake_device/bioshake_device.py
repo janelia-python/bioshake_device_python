@@ -42,10 +42,11 @@ class BioshakeDevice(object):
 
     Example Usage:
 
-    dev = BioshakeDevice() # Automatically finds device if one available
-    dev = BioshakeDevice('/dev/ttyUSB0') # Linux
-    dev = BioshakeDevice('/dev/tty.usbmodem262471') # Mac OS X
-    dev = BioshakeDevice('COM3') # Windows
+    dev = BioshakeDevice() # Might automatically find device if one available
+    # if it is not found automatically, specify port directly
+    dev = BioshakeDevice(port='/dev/ttyUSB0') # Linux
+    dev = BioshakeDevice(port='/dev/tty.usbmodem262471') # Mac OS X
+    dev = BioshakeDevice(port='COM3') # Windows
     dev.get_description()
     dev.shake_on(speed_target=1000) # speed_target (rpm)
     dev.get_shake_actual_speed()
@@ -393,7 +394,11 @@ class BioshakeDevices(list):
 
     Example Usage:
 
-    devs = BioshakeDevices()  # Automatically finds all available devices
+    devs = BioshakeDevices()  # Might automatically find all available devices
+    # if they are not found automatically, specify ports to try
+    devs = BioshakeDevices(try_ports=['/dev/ttyUSB0','/dev/ttyUSB1']) # Linux
+    devs = BioshakeDevices(try_ports=['/dev/tty.usbmodem262471','/dev/tty.usbmodem262472']) # Mac OS X
+    devs = BioshakeDevices(try_ports=['COM3','COM4']) # Windows
     dev = devs[0]
     '''
     def __init__(self,*args,**kwargs):
