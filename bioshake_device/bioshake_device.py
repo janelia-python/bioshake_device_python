@@ -395,10 +395,10 @@ class BioshakeDevices(list):
     Example Usage:
 
     devs = BioshakeDevices()  # Might automatically find all available devices
-    # if they are not found automatically, specify ports to try
-    devs = BioshakeDevices(try_ports=['/dev/ttyUSB0','/dev/ttyUSB1']) # Linux
-    devs = BioshakeDevices(try_ports=['/dev/tty.usbmodem262471','/dev/tty.usbmodem262472']) # Mac OS X
-    devs = BioshakeDevices(try_ports=['COM3','COM4']) # Windows
+    # if they are not found automatically, specify ports to use
+    devs = BioshakeDevices(use_ports=['/dev/ttyUSB0','/dev/ttyUSB1']) # Linux
+    devs = BioshakeDevices(use_ports=['/dev/tty.usbmodem262471','/dev/tty.usbmodem262472']) # Mac OS X
+    devs = BioshakeDevices(use_ports=['COM3','COM4']) # Windows
     dev = devs[0]
     '''
     def __init__(self,*args,**kwargs):
