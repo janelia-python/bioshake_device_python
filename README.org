@@ -1,22 +1,19 @@
-#bioshake_device_python
+#+TITLE: bioshake_device_python
+#+AUTHOR: Peter Polidoro
+#+EMAIL: peterpolidoro@gmail.com
 
-This Python package (bioshake\_device) creates a class named
-BioshakeDevice, which contains an instance of
-serial\_device2.SerialDevice and adds methods to it to interface to
-Q.instruments BioShake devices.
+* Package Information
+  - Author :: Peter Polidoro
+  - License :: BSD
 
-Authors:
+  This Python package (bioshake_device) creates a class named
+  BioshakeDevice, which contains an instance of
+  serial_device2.SerialDevice and adds methods to it to interface to
+  Q.instruments BioShake devices.
 
-    Peter Polidoro <polidorop@janelia.hhmi.org>
+* Example Usage
 
-License:
-
-    BSD
-
-##Example Usage
-
-
-```python
+  #+BEGIN_SRC python
 from bioshake_device import BioshakeDevice
 dev = BioshakeDevice() # Might automatically find device if one available
 # if it is not found automatically, specify port directly
@@ -30,34 +27,34 @@ dev.shake_off()
 dev.temp_on(temp_target=45) # temp_target (°C)
 dev.get_temp_actual()
 dev.temp_off()
-```
+  #+END_SRC
 
-```python
+  #+BEGIN_SRC python
 devs = BioshakeDevices()  # Might automatically find all available devices
 # if they are not found automatically, specify ports to use
 devs = BioshakeDevices(use_ports=['/dev/ttyUSB0','/dev/ttyUSB1']) # Linux
 devs = BioshakeDevices(use_ports=['/dev/tty.usbmodem262471','/dev/tty.usbmodem262472']) # Mac OS X
 devs = BioshakeDevices(use_ports=['COM3','COM4']) # Windows
 dev = devs[0]
-```
+  #+END_SRC
 
-##Installation
+* Installation
 
-[Setup Python](https://github.com/janelia-pypi/python_setup)
+  [[https://github.com/janelia-pypi/python_setup][Setup Python]]
 
-###Linux and Mac OS X
+** Linux and Mac OS X
 
-```shell
+   #+BEGIN_SRC sh
 mkdir -p ~/virtualenvs/bioshake_device
 virtualenv ~/virtualenvs/bioshake_device
 source ~/virtualenvs/bioshake_device/bin/activate
 pip install bioshake_device
-```
+   #+END_SRC
 
-###Windows
+** Windows
 
-```shell
+   #+BEGIN_SRC sh
 virtualenv C:\virtualenvs\bioshake_device
 C:\virtualenvs\bioshake_device\Scripts\activate
 pip install bioshake_device
-```
+   #+END_SRC
