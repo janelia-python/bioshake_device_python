@@ -3,8 +3,12 @@
 #+EMAIL: peterpolidoro@gmail.com
 
 * Package Information
-  - Author :: Peter Polidoro
+  - Name :: bioshake_device_python
+  - Version :: 1.7.2
   - License :: BSD
+  - URL :: https://github.com/janelia-pypi/bioshake_device_python
+  - Author :: Peter Polidoro
+  - Email :: peterpolidoro@gmail.com
 
   This Python package (bioshake_device) creates a class named
   BioshakeDevice, which contains an instance of
