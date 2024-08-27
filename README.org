@@ -6,7 +6,7 @@
   - Name :: bioshake_device_python
   - Version :: 1.7.2
   - License :: BSD
-  - URL :: https://github.com/janelia-pypi/bioshake_device_python
+  - URL :: https://github.com/janelia-python/bioshake_device_python
   - Author :: Peter Polidoro
   - Email :: peter@polidoro.io
 
@@ -44,7 +44,7 @@
 
 * Installation
 
-  [[https://github.com/janelia-pypi/python_setup]]
+  [[https://github.com/janelia-python/python_setup]]
 
 ** Linux and Mac OS X
 
